@@ -3,10 +3,10 @@ const fetch          = require('node-fetch');
 var torrentStream    = require('torrent-stream');
 
 module.exports = function(app, db) {
-    app.get('/movies/:page', (req, res) => {
+    app.get('/movies/:sort/:page', (req, res) => {
         const page = req.params.page
-
-        const url = 'https://cors-anywhere.herokuapp.com/https://yts.am/api/v2/list_movies.json?limit=30&sort_by=rating&page='+page;
+        const sort = req.params.sort
+        const url = 'https://cors-anywhere.herokuapp.com/https://yts.am/api/v2/list_movies.json?limit=30&sort_by='+sort+'&page='+page;
         const data = async url => {
             try {
                 const response = await fetch(url, {
@@ -43,20 +43,40 @@ module.exports = function(app, db) {
 
     
 
-    app.get('/stream/:link/:name', (req, res) => {
+    app.get('/stream/:link/:name', async (req, res) => {
         const link  = req.params.link
         const name  = req.params.name
         let return_val  = null
 
         let engine  = torrentStream('magnet:?xt=urn:btih:'+link+'&dn='+name+'&tr=udp://glotorrents.pw:6969/announce&tr=udp://tracker.opentrackr.org:1337/announce')
         engine.on('ready', function() {
-            engine.files.forEach(function(file) {
-                console.log('filename:', file.name)
+            engine.files.forEach((file) => {
                 if (file.name.includes('.mp4')) return_val = file
-                // res.send(stream)
             });
-            let vid_stream = return_val.createReadStream()
-            vid_stream.pipe(res);
+            let se = req.headers.range.replace(/bytes=/, '').split('-');
+            
+            let start = parseInt(se[0], 10);
+            let end = se[1] ? parseInt(se[1], 10) : return_val.length - 1;
+            let v_length = (end - start) + 1
+            let head = {
+                "Content-Range": "bytes " + start + "-" + end + "/" + return_val.length,
+                "Accept-Ranges": "bytes",
+                "Content-Length": v_length,
+                "Content-Type": "video/mp4"
+            }
+            console.log(head);
+            res.writeHead(206, head);
+
+            let vid_stream = return_val.createReadStream({
+                start: start,
+                end: end
+            })
+            vid_stream.pipe(res)
+            // .on('close', () => {
+            //     console.log('done');
+            //     engine.destroy();
+            //     res.send('done');
+            // });
         });
     })
 
