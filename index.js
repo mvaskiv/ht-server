@@ -23,6 +23,9 @@ app.get('/', (req, res) => {
     res.send('Hypertube Serving')
 })
 
+app.use('/posters/', express.static('posters'))
+app.use('/covers/', express.static('covers'))
+
 app.use(bodyParser.urlencoded({ extended: true }));
 MongoClient.connect(db.url, (err, database) => {
     if (err) return console.error(err)

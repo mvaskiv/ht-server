@@ -1,12 +1,46 @@
 var ObjectID         = require('mongodb').ObjectID
 const fetch          = require('node-fetch');
 var torrentStream    = require('torrent-stream');
+const https          = require('https')
+let fs               = require('fs')
+let path             = require('path');
+const __root         = path.dirname(require.main.filename);
+
+async function _checkImages(movies) {
+    await movies.forEach(m => {
+        fs.access(__root + '/posters/' + m.slug + '.jpg', fs.F_OK, (err) => {
+            if (err) _savePoster(m.medium_cover_image, m.slug, 'poster')
+        })
+        fs.access(__root + '/covers/' + m.slug + '.jpg', fs.F_OK, (err) => {
+            if (err) _savePoster(m.background_image, m.slug, 'cover')
+        })
+    })
+    return 1
+}
+
+function _savePoster(url, name, type) {
+    const folder = type === 'poster' ? '/posters/' : '/covers/'
+    let localPath = __root + folder + name + '.jpg';
+    let file = fs.createWriteStream(localPath);
+
+    https.get({
+        method: 'GET',
+        host: 'cors-anywhere.herokuapp.com',
+        path: '/' + url,
+        headers: {
+            origin: 'HypoTube',
+        },
+    }, async r => {
+        r.pipe(file);
+    });
+}
 
 module.exports = function(app, db) {
     app.get('/movies/:sort/:page', (req, res) => {
         const page = req.params.page
         const sort = req.params.sort
-        const url = 'https://cors-anywhere.herokuapp.com/https://yts.am/api/v2/list_movies.json?limit=30&sort_by='+sort+'&page='+page;
+        const url = 'https://cors-anywhere.herokuapp.com/https://yts.am/api/v2/list_movies.json?limit=12&sort_by='+sort+'&page='+page;
+        
         const data = async url => {
             try {
                 const response = await fetch(url, {
@@ -17,31 +51,19 @@ module.exports = function(app, db) {
                         "Content-Type": "application/json; charset=utf-8",
                         origin: 'HypoTube',
                     },
+                    timeout: 15000,
                     redirect: 'follow',
-                    timeout: 5000,
                 })
                 const json = await response.json()
-                res.send(json.data.movies)
+                let movies = json.data.movies;
+                _checkImages(movies).then(() => res.send(movies))
             } catch (error) {
                 console.error(error)
             }
         }
         
         data(url);
-        
-        // db.collection('notes').find( details ).toArray((err, result) => {
-        //     if (err) {
-        //         res.send({ error: 'xz' })
-        //     } else if (!result){
-        //         res.send('not_found')
-        //     } else {
-        //         console.log(req.params.date)
-        //         res.send(result)
-        //     }
-        // })
     })
-
-    
 
     app.get('/stream/:link/:name', async (req, res) => {
         const link  = req.params.link
@@ -53,8 +75,8 @@ module.exports = function(app, db) {
             engine.files.forEach((file) => {
                 if (file.name.includes('.mp4')) return_val = file
             });
+
             let se = req.headers.range.replace(/bytes=/, '').split('-');
-            
             let start = parseInt(se[0], 10);
             let end = se[1] ? parseInt(se[1], 10) : return_val.length - 1;
             let v_length = (end - start) + 1
@@ -72,73 +94,11 @@ module.exports = function(app, db) {
                 end: end
             })
             vid_stream.pipe(res)
-            // .on('close', () => {
-            //     console.log('done');
-            //     engine.destroy();
-            //     res.send('done');
-            // });
         });
-    })
+    }) 
 
-
-    app.get('/note/:id', (req, res) => {
-        const id = req.params.id
-        const details = { '_id': new ObjectID(id) }
-        db.collection('notes').findOne(details, (err, result) => {
-            if (err) {
-                res.send({ error: 'error' })
-            } else if (!result){
-                res.send('not_found')
-            } else {
-                res.send(result)
-            }
-        })
-    })
-
-
-    app.post('/notes', (req, res) => {
-        const note = {
-            id: new Date().getTime(),
-            header: req.body.header,
-            text: req.body.text,
-            deleted: req.body.deleted,
-            archive: req.body.archive,
-            uuid: req.body.uuid,
-            last_mod: new Date().getTime()
-        }
-        db.collection('notes').insert(note, (err, result) => {
-            if (err) {
-                res.send({ error: 'error' })
-            } else {
-                res.send(result.ops[0])
-            }
-        })
-    })
-
-
-    app.delete('/notes/:id', (req, res) => {
-        const id = req.params.id
-        const details = { '_id': new ObjectID(id) }
-        db.collection('notes').remove(details, (err, result) => {
-            if (err) {
-                res.send({ error: 'error' })
-            } else {
-                res.send('deleted')
-            }
-        })
-    })
-
-    
-    app.put('/notes/:id', (req, res) => {
-        const id = req.params.id
-        const details = { '_id': new ObjectID(id) }
-        const note = { title: req.body.title, text: req.body.text, last_mod: new Date().getTime() }
-        db.collection('notes').update(details, note, (err, result) => {
-            if (err) {
-                res.send({ error: 'xz' })
-            } else {
-                res.send(note)
-            }
-        })
-    })
+    // app.get('/poster/:name', (req, res) => {
+    //     const name = req.params.name + '.jpg'
+    //     res.sendFile(__dirname + '/posters/' + name);
+    // })
 }
