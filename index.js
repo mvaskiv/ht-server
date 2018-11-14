@@ -6,8 +6,16 @@ const bodyParser     = require('body-parser');
 const MongoClient    = require('mongodb').MongoClient;
 const db             = require('./config/db');
 
-const uuid           = require('uuid/v4');
 let cors             = require('cors');
+
+let path             = require('path')
+const https          = require('https')
+let fs               = require('fs')
+
+const certOptions = {
+    key: fs.readFileSync(path.resolve('build/cert/server.key')),
+    cert: fs.readFileSync(path.resolve('build/cert/server.crt'))
+}
 
 const app            = express();
       app.use(cors());
@@ -17,16 +25,19 @@ const app            = express();
         res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
         next();
 })
+app.use(bodyParser.urlencoded({ extended: true }));
+app.use(bodyParser.json())
+
+https.createServer(certOptions, app).listen(8443)
 
 app.get('/', (req, res) => {
-    console.log('qwe')
     res.send('Hypertube Serving')
 })
 
 app.use('/posters/', express.static('posters'))
 app.use('/covers/', express.static('covers'))
 
-app.use(bodyParser.urlencoded({ extended: true }));
+
 MongoClient.connect(db.url, (err, database) => {
     if (err) return console.error(err)
     let db_conn = database.db('heroku_tfrwl8td') 

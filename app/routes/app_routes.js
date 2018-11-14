@@ -4,6 +4,8 @@ var torrentStream    = require('torrent-stream');
 const https          = require('https')
 let fs               = require('fs')
 let path             = require('path');
+let shajs            = require('sha.js')
+const uuid           = require('uuid/v4');
 const __root         = path.dirname(require.main.filename);
 
 async function _checkImages(movies) {
@@ -39,7 +41,7 @@ module.exports = function(app, db) {
     app.get('/movies/:sort/:page', (req, res) => {
         const page = req.params.page
         const sort = req.params.sort
-        const url = 'https://cors-anywhere.herokuapp.com/https://yts.am/api/v2/list_movies.json?limit=12&sort_by='+sort+'&page='+page;
+        const url = 'https://cors-anywhere.herokuapp.com/https://yts.am/api/v2/list_movies.json?limit=32&sort_by='+sort+'&page='+page;
         
         const data = async url => {
             try {
@@ -70,7 +72,7 @@ module.exports = function(app, db) {
         const name  = req.params.name
         let return_val  = null
 
-        let engine  = torrentStream('magnet:?xt=urn:btih:'+link+'&dn='+name+'&tr=udp://glotorrents.pw:6969/announce&tr=udp://tracker.opentrackr.org:1337/announce')
+        let engine  = torrentStream('magnet:?xt=urn:btih:'+link+'&dn='+name+'&tr=udp://glotorrents.pw:6969/announce&tr=udp://tracker.opentrackr.org:1337/announce&tr=udp://open.demonii.com:1337/announce&tr=udp://tracker.openbittorrent.com:80&tr=udp://tracker.coppersurfer.tk:6969&tr=udp://torrent.gresille.org:80/announce&tr=udp://p4p.arenabg.com:1337&tr=udp://tracker.leechers-paradise.org:6969')
         engine.on('ready', function() {
             engine.files.forEach((file) => {
                 if (file.name.includes('.mp4')) return_val = file
@@ -95,10 +97,5 @@ module.exports = function(app, db) {
             })
             vid_stream.pipe(res)
         });
-    }) 
-
-    // app.get('/poster/:name', (req, res) => {
-    //     const name = req.params.name + '.jpg'
-    //     res.sendFile(__dirname + '/posters/' + name);
-    // })
+    })  
 }
