@@ -15,7 +15,6 @@ passport.use(new ft_oauth({
     callbackURL: "https://localhost:8443/auth/42/callback"
   },
   async (accessToken, refreshToken, profile, cb) => {
-    //   console.log(profile)
       let user = {
           fname: profile.name.givenName,
           lname: profile.name.familyName,
@@ -23,7 +22,7 @@ passport.use(new ft_oauth({
           login: profile.username
       }
       console.log(user);
-      return user
+      return cb(null, user)
 
     // User.findOrCreate({ fortytwoId: profile.id }, function (err, user) {
     //   return cb(err, user);
@@ -110,34 +109,6 @@ module.exports = function(app, db) {
         } else res.send({error: 'no_permission'})
     })
 
-    app.get('/oauth', (req, res) => {
-        let code = req.query.code;
-        let url     = `https://api.intra.42.fr/oauth/token?grant_type=client_credentials&client_id=${ft_uid}&client_secret=${ft_sec}&code=${code}`
-        fetch(url, {
-            method: 'POST',
-            headers: {
-                Accept: 'application/json',
-            }     
-        }).then(r => r.json())
-        .then(result => {
-            console.log(result)
-            res.send(result);
-        })
-    })
-
-    app.get('/42/:addr/:token', (req, res) => {
-        let token   = req.params.token;
-        let addr    = req.params.addr
-        let url     = 'https://api.intra.42.fr/v2/' + addr;
-
-        fetch(url, {
-            method: 'GET',
-            headers: {
-                Accept: 'application/json',
-                'Authorization': 'Bearer ' + token,
-            }
-        }).then(r => r.json()).then(result => res.send(result))
-    })
 
 
     app.get('/auth/42', passport.authenticate('42'));

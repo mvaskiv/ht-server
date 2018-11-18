@@ -71,7 +71,6 @@ module.exports = function(app, db) {
                 console.error(error)
             }
         }
-        
         data(url);
     })
 
@@ -102,7 +101,6 @@ module.exports = function(app, db) {
                 start: start,
                 end: end
             })
-            // vid_stream.pipe(res)
 
             let lp = __root + '/movies/' + name + '.mp4';
 
@@ -116,6 +114,6 @@ module.exports = function(app, db) {
                     vid_stream.pipe(file)
                 }
             })
-        });
+        })
     })  
 }
