@@ -1,5 +1,35 @@
 let shajs            = require('sha.js')
-const uuid           = require('uuid/v4');
+const uuid           = require('uuid/v4')
+const fetch          = require('node-fetch');
+let url              = require('url')
+
+const ft_uid         = 'd9e37033b880ac3cd0aa360fff1d906ed3f363d681a3acfd4c7c303a369ffbb1'
+const ft_sec         = '4367d6db88b636d01372868e543051fc4d2072510fe74f3319406b8eb2669310'
+
+let ft_oauth         = require('passport-42').Strategy;
+let passport         = require('passport')
+
+passport.use(new ft_oauth({
+    clientID: ft_uid,
+    clientSecret: ft_sec,
+    callbackURL: "https://localhost:8443/auth/42/callback"
+  },
+  async (accessToken, refreshToken, profile, cb) => {
+    //   console.log(profile)
+      let user = {
+          fname: profile.name.givenName,
+          lname: profile.name.familyName,
+          email: profile.emails[0].value,
+          login: profile.username
+      }
+      console.log(user);
+      return user
+
+    // User.findOrCreate({ fortytwoId: profile.id }, function (err, user) {
+    //   return cb(err, user);
+    // });
+  }
+));
 
 module.exports = function(app, db) {
     app.get('/user/:id', (req, res) => {
@@ -79,4 +109,43 @@ module.exports = function(app, db) {
             })
         } else res.send({error: 'no_permission'})
     })
+
+    app.get('/oauth', (req, res) => {
+        let code = req.query.code;
+        let url     = `https://api.intra.42.fr/oauth/token?grant_type=client_credentials&client_id=${ft_uid}&client_secret=${ft_sec}&code=${code}`
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                Accept: 'application/json',
+            }     
+        }).then(r => r.json())
+        .then(result => {
+            console.log(result)
+            res.send(result);
+        })
+    })
+
+    app.get('/42/:addr/:token', (req, res) => {
+        let token   = req.params.token;
+        let addr    = req.params.addr
+        let url     = 'https://api.intra.42.fr/v2/' + addr;
+
+        fetch(url, {
+            method: 'GET',
+            headers: {
+                Accept: 'application/json',
+                'Authorization': 'Bearer ' + token,
+            }
+        }).then(r => r.json()).then(result => res.send(result))
+    })
+
+
+    app.get('/auth/42', passport.authenticate('42'));
+
+    app.get('/auth/42/callback',
+        passport.authenticate('42', { failureRedirect: '/login' }),
+        function(req, res) {
+            // Successful authentication, redirect home.
+            res.redirect('/');
+    });
 }

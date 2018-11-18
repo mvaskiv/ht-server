@@ -4,26 +4,28 @@ var torrentStream    = require('torrent-stream');
 const https          = require('https')
 let fs               = require('fs')
 let path             = require('path');
-let shajs            = require('sha.js')
-const uuid           = require('uuid/v4');
 const __root         = path.dirname(require.main.filename);
 
 async function _checkImages(movies) {
     await movies.forEach(m => {
         fs.access(__root + '/posters/' + m.slug + '.jpg', fs.F_OK, (err) => {
+            console.log('fs access check --- fs.F_OK --- ' + '/posters/' + m.slug + '.jpg')
             if (err) _savePoster(m.medium_cover_image, m.slug, 'poster')
+            else return 1
         })
         fs.access(__root + '/covers/' + m.slug + '.jpg', fs.F_OK, (err) => {
             if (err) _savePoster(m.background_image, m.slug, 'cover')
+            else return 1
         })
     })
-    return 1
+    console.log('foreach done')
+    return 0
 }
 
 function _savePoster(url, name, type) {
-    const folder = type === 'poster' ? '/posters/' : '/covers/'
-    let localPath = __root + folder + name + '.jpg';
-    let file = fs.createWriteStream(localPath);
+    const folder    = type === 'poster' ? '/posters/' : '/covers/'
+    let localPath   = __root + folder + name + '.jpg';
+    let file        = fs.createWriteStream(localPath);
 
     https.get({
         method: 'GET',
@@ -39,9 +41,9 @@ function _savePoster(url, name, type) {
 
 module.exports = function(app, db) {
     app.get('/movies/:sort/:page', (req, res) => {
-        const page = req.params.page
-        const sort = req.params.sort
-        const url = 'https://cors-anywhere.herokuapp.com/https://yts.am/api/v2/list_movies.json?limit=32&sort_by='+sort+'&page='+page;
+        const page  = req.params.page
+        const sort  = req.params.sort
+        const url   = 'https://cors-anywhere.herokuapp.com/https://yts.am/api/v2/list_movies.json?limit=32&sort_by='+sort+'&page='+page;
         
         const data = async url => {
             try {
@@ -58,7 +60,13 @@ module.exports = function(app, db) {
                 })
                 const json = await response.json()
                 let movies = json.data.movies;
-                _checkImages(movies).then(() => res.send(movies))
+                await _checkImages(movies).then((result) => {
+                    if (result !== 1) res.send(movies)
+                    else {
+                        console.log('Setting Timeout --- 3000ms')
+                        setTimeout(() => res.send(movies), 3000)
+                    }
+                })
             } catch (error) {
                 console.error(error)
             }
@@ -68,8 +76,8 @@ module.exports = function(app, db) {
     })
 
     app.get('/stream/:link/:name', async (req, res) => {
-        const link  = req.params.link
-        const name  = req.params.name
+        const link      = req.params.link
+        const name      = req.params.name
         let return_val  = null
 
         let engine  = torrentStream('magnet:?xt=urn:btih:'+link+'&dn='+name+'&tr=udp://glotorrents.pw:6969/announce&tr=udp://tracker.opentrackr.org:1337/announce&tr=udp://open.demonii.com:1337/announce&tr=udp://tracker.openbittorrent.com:80&tr=udp://tracker.coppersurfer.tk:6969&tr=udp://torrent.gresille.org:80/announce&tr=udp://p4p.arenabg.com:1337&tr=udp://tracker.leechers-paradise.org:6969')
@@ -88,14 +96,26 @@ module.exports = function(app, db) {
                 "Content-Length": v_length,
                 "Content-Type": "video/mp4"
             }
-            console.log(head);
-            res.writeHead(206, head);
-
+            console.log(head)
+            
             let vid_stream = return_val.createReadStream({
                 start: start,
                 end: end
             })
-            vid_stream.pipe(res)
+            // vid_stream.pipe(res)
+
+            let lp = __root + '/movies/' + name + '.mp4';
+
+            fs.access(lp, fs.F_OK, (err) => {
+                if (!err && fs.statSync(lp).size === v_length) {
+                    res.sendFile(lp)
+                } else {
+                    let file = fs.createWriteStream(lp)
+                    res.writeHead(206, head);
+                    vid_stream.pipe(res)        
+                    vid_stream.pipe(file)
+                }
+            })
         });
     })  
 }
