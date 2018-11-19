@@ -31,6 +31,7 @@ passport.use(new ft_oauth({
 ));
 
 module.exports = function(app, db) {
+    // GET /user/:id - for all users
     app.get('/user/:id', (req, res) => {
         let uuid = req.params.id;
 
@@ -52,13 +53,13 @@ module.exports = function(app, db) {
         } else res.send({error: 'no_permission'})
     })
 
+    // POST /user/:id - for signed in user
     app.post('/user/:id', (req, res) => {
         let uuid = req.params.id;
         let auth = req.body.auth ? req.body.auth.split('.') : null;
 
         if (auth && auth[1] === shajs('sha256').update(uuid.toString()).digest('hex')) {
             db.collection('users').findOne({uuid: uuid}, (err, result) => {
-                console.log(result)
                 if (err) res.send({error: 'error'})
                 else if (!result) res.send({rejection: 'logout'})
                 else res.send({status: 'ok', me: result})

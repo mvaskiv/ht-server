@@ -12,8 +12,6 @@ let path             = require('path')
 const https          = require('https')
 let fs               = require('fs')
 
-
-
 const certOptions = {
     key: fs.readFileSync(path.resolve('build/cert/server.key')),
     cert: fs.readFileSync(path.resolve('build/cert/server.crt'))

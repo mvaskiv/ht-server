@@ -18,7 +18,6 @@ async function _checkImages(movies) {
             else return 1
         })
     })
-    console.log('foreach done')
     return 0
 }
 
@@ -43,7 +42,7 @@ module.exports = function(app, db) {
     app.get('/movies/:sort/:page', (req, res) => {
         const page  = req.params.page
         const sort  = req.params.sort
-        const url   = 'https://cors-anywhere.herokuapp.com/https://yts.am/api/v2/list_movies.json?limit=32&sort_by='+sort+'&page='+page;
+        const url   = 'https://cors-anywhere.herokuapp.com/https://yts.am/api/v2/list_movies.json?limit=25&sort_by='+sort+'&page='+page;
         
         const data = async url => {
             try {
