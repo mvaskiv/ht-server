@@ -24,6 +24,7 @@
     "passport-42": "^1.2.4",
     "passport-facebook": "^2.1.1",
     "request-promise": "^4.2.2",
+    "sendmail": "^1.4.1",
     "sha.js": "^2.4.11",
     "torrent-stream": "^1.1.0",
     "uuid": "^3.3.2"

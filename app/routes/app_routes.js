@@ -39,39 +39,39 @@ function _savePoster(url, name, type) {
 }
 
 module.exports = function(app, db) {
-    app.get('/movies/:sort/:page', (req, res) => {
-        const page  = req.params.page
-        const sort  = req.params.sort
-        const url   = 'https://cors-anywhere.herokuapp.com/https://yts.am/api/v2/list_movies.json?limit=25&sort_by='+sort+'&page='+page;
+    // app.get('/movies/:sort/:page', (req, res) => {
+    //     const page  = req.params.page
+    //     const sort  = req.params.sort
+    //     const url   = 'https://cors-anywhere.herokuapp.com/https://yts.am/api/v2/list_movies.json?limit=25&sort_by='+sort+'&page='+page;
         
-        const data = async url => {
-            try {
-                const response = await fetch(url, {
-                    method: 'GET',
-                    Accept: 'application/json',
+    //     const data = async url => {
+    //         try {
+    //             const response = await fetch(url, {
+    //                 method: 'GET',
+    //                 Accept: 'application/json',
                     
-                    headers: {
-                        "Content-Type": "application/json; charset=utf-8",
-                        origin: 'HypoTube',
-                    },
-                    timeout: 15000,
-                    redirect: 'follow',
-                })
-                const json = await response.json()
-                let movies = json.data.movies;
-                await _checkImages(movies).then((result) => {
-                    if (result !== 1) res.send(movies)
-                    else {
-                        console.log('Setting Timeout --- 3000ms')
-                        setTimeout(() => res.send(movies), 3000)
-                    }
-                })
-            } catch (error) {
-                console.error(error)
-            }
-        }
-        data(url);
-    })
+    //                 headers: {
+    //                     "Content-Type": "application/json; charset=utf-8",
+    //                     origin: 'HypoTube',
+    //                 },
+    //                 timeout: 15000,
+    //                 redirect: 'follow',
+    //             })
+    //             const json = await response.json()
+    //             let movies = json.data.movies;
+    //             await _checkImages(movies).then((result) => {
+    //                 if (result !== 1) res.send(movies)
+    //                 else {
+    //                     console.log('Setting Timeout --- 3000ms')
+    //                     setTimeout(() => res.send(movies), 3000)
+    //                 }
+    //             })
+    //         } catch (error) {
+    //             console.error(error)
+    //         }
+    //     }
+    //     data(url);
+    // })
 
     app.get('/stream/:link/:name', async (req, res) => {
         const link      = req.params.link
@@ -81,7 +81,7 @@ module.exports = function(app, db) {
         let engine  = torrentStream('magnet:?xt=urn:btih:'+link+'&dn='+name+'&tr=udp://glotorrents.pw:6969/announce&tr=udp://tracker.opentrackr.org:1337/announce&tr=udp://open.demonii.com:1337/announce&tr=udp://tracker.openbittorrent.com:80&tr=udp://tracker.coppersurfer.tk:6969&tr=udp://torrent.gresille.org:80/announce&tr=udp://p4p.arenabg.com:1337&tr=udp://tracker.leechers-paradise.org:6969')
         engine.on('ready', function() {
             engine.files.forEach((file) => {
-                if (file.name.includes('.mp4')) return_val = file
+                if (file.name.match(/(^.*\.mp4$)|(^.*\.mkv$)/)) return_val = file
             });
 
             let se = req.headers.range.replace(/bytes=/, '').split('-');
@@ -114,5 +114,93 @@ module.exports = function(app, db) {
                 }
             })
         })
-    })  
+    })
+
+    app.get('/quick-search/:query', (req, res) => {
+        console.log('search')
+        const query = req.params.query
+        const url   = 'https://cors-anywhere.herokuapp.com/https://yts.am/api/v2/list_movies.json?limit=5&query_term='+query;
+
+        fetch(url, {
+            method: 'GET',
+            Accept: 'application/json',
+            
+            headers: {
+                "Content-Type": "application/json; charset=utf-8",
+                origin: 'HypoTube',
+            },
+            timeout: 15000,
+            redirect: 'follow',
+        })
+        .then(r => r.json())
+        .then(result => {
+            let search = result.data.movies
+            res.send(search)
+        })
+        
+    })
+
+
+    app.get('/movies-cache/:sort/:page', (req, res) => {
+        const page  = req.params.page
+        const sort  = req.params.sort
+        const url   = 'https://cors-anywhere.herokuapp.com/https://yts.am/api/v2/list_movies.json?limit=50&sort_by='+sort+'&page='+page;
+        
+        
+        const upsertPages = async movies => {
+            console.log('Upsert started')
+            let first = await movies.slice(0, 25);
+            let second = await movies.slice(25, movies.length);
+
+            db.collection('pages').update( { page: page, sort: sort }, {page: page, sort: sort, content: JSON.stringify(first)}, {upsert: true}, (err, result) => {
+                if (err) {
+                    console.warn(`Error: error upserting document: 'Page: ${page}, Sort: ${sort}'\n${err}`)
+                } else console.log(`Page upserted: 'Page: ${page}, Sort: ${sort}'`)
+            })
+            db.collection('pages').update( { page: (parseInt(page) + 1).toString(), sort: sort }, {page: (parseInt(page) + 1).toString(), sort: sort, content: JSON.stringify(second)}, {upsert: true}, (err, result) => {
+                if (err) {
+                    console.warn(`Error: error upserting document: 'Page: ${page}, Sort: ${sort}'\n${err}`)
+                } else console.log(`Page upserted: 'Page: ${(parseInt(page) + 1).toString()}, Sort: ${sort}'`)
+            })
+        }
+     
+        const data = async (url, out) => {
+            try {
+                const response = await fetch(url, {
+                    method: 'GET',
+                    Accept: 'application/json',
+                    
+                    headers: {
+                        "Content-Type": "application/json; charset=utf-8",
+                        origin: 'HypoTube',
+                    },
+                    timeout: 15000,
+                    redirect: 'follow',
+                })
+                const json = await response.json()
+                let movies = await json.data.movies
+                upsertPages(movies)
+                // await _checkImages(movies)
+                out && res.send(movies.splice(0, 25))
+            } catch (error) {
+                console.warn(error)
+            }
+        }
+
+        const dbCheck = async (check, out) => {
+            !out && data(url, 0)
+            db.collection('pages').findOne({ page: (parseInt(page) + check).toString(), sort: sort }, (err, result) => {
+                if (err) {
+                    out && res.send({ error: 'error' })
+                } else if (!result){
+                    data(url, 1)
+                } else {
+                    out && dbCheck(1, 0)
+                    out && res.send(result.content)
+                }
+            })
+        }
+
+        dbCheck(0, 1);
+    })
 }
