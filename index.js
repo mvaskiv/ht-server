@@ -1,3 +1,17 @@
+let Cron             = require('cron').CronJob
+let cleanUp = new Cron('00 00 12 * * 0-6', () => {
+    let now = new Date().getTime()
+    fs.readdir('./movies', (err, f) => {
+        f.forEach((file, i) => {
+            fs.stat('./movies/' + file, (err, stat) => {
+                if (err) console.error(err)
+                let expiry = new Date(stat.ctime).getTime() + 262974400000
+                if (now > expiry) fs.unlink('./movies/' + file)
+            })
+        })
+    })
+}, null, true, 'UTC');
+cleanUp.start()
 
 const port           = process.env.PORT || 8000;
 const ft_uid         = 'd9e37033b880ac3cd0aa360fff1d906ed3f363d681a3acfd4c7c303a369ffbb1'
