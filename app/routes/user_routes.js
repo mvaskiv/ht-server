@@ -91,10 +91,34 @@ module.exports = function(app, db) {
     app.get('/auth/42/callback',
         passport.authenticate('42', { failureRedirect: '/login' }),
         async (req, res) => {
-            console.log(res)
+            let moment = new Date().getTime();
+            let result = req.user
+            // result.uuid = uuid();
+            console.log(result)
+            
+            let JWT = shajs('sha256').update(moment.toString()).digest('hex') + '.' + shajs('sha256', 'hypertube').update(result.uuid).digest('hex')
+            // res.send({status: 'login', auth: JWT, uuid: result.uuid})
+            res.redirect('http://localhost:3000/oauth/' + JWT)
+
+
             // let auth = await req.body.user
             
             // Successful authentication, redirect home.
-            res.redirect('/?code='+req.query.code);
+            // res.redirect('/');
     });
+
+    app.get('/token_login/:token', (req,res) => {
+        let token = req.params.token
+        let all = db.collection('users').find()
+
+        all.forEach((k) => {
+            if (shajs('sha256', 'hypertube').update(k.uuid).digest('hex') === token) {
+                let moment = new Date().getTime();
+                let JWT = shajs('sha256').update(moment.toString()).digest('hex') + '.' + shajs('sha256', 'hypertube').update(k.uuid).digest('hex')
+                k.auth = JWT;
+                res.send(k) 
+            }
+        })
+        // res.send({'error': 'error'})
+    })
 }

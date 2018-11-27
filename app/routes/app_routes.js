@@ -119,7 +119,7 @@ module.exports = function(app, db) {
     app.get('/quick-search/:query', (req, res) => {
         console.log('search')
         const query = req.params.query
-        const url   = 'https://cors-anywhere.herokuapp.com/https://yts.am/api/v2/list_movies.json?limit=5&query_term='+query;
+        const url   = 'https://cors-anywhere.herokuapp.com/https://yts.am/api/v2/list_movies.json?limit=25&page=1&query_term='+query;
 
         fetch(url, {
             method: 'GET',
@@ -141,10 +141,11 @@ module.exports = function(app, db) {
     })
 
 
-    app.get('/movies-cache/:sort/:page', (req, res) => {
+    app.get('/movies-cache/:sort/:genre/:page', (req, res) => {
         const page  = req.params.page
         const sort  = req.params.sort
-        const url   = 'https://cors-anywhere.herokuapp.com/https://yts.am/api/v2/list_movies.json?limit=50&sort_by='+sort+'&page='+page;
+        const genre = req.params.genre
+        const url   = 'https://cors-anywhere.herokuapp.com/https://yts.am/api/v2/list_movies.json?limit=50&genre='+genre+'&sort_by='+sort+'&page='+page;
         
         
         const upsertPages = async movies => {
@@ -152,12 +153,12 @@ module.exports = function(app, db) {
             let first = await movies.slice(0, 25);
             let second = await movies.slice(25, movies.length);
 
-            db.collection('pages').update( { page: page, sort: sort }, {page: page, sort: sort, content: JSON.stringify(first)}, {upsert: true}, (err, result) => {
+            db.collection('pages').update( { page: page, sort: sort, genre: genre }, {page: page, sort: sort, genre: genre, content: JSON.stringify(first)}, {upsert: true}, (err, result) => {
                 if (err) {
                     console.warn(`Error: error upserting document: 'Page: ${page}, Sort: ${sort}'\n${err}`)
                 } else console.log(`Page upserted: 'Page: ${page}, Sort: ${sort}'`)
             })
-            db.collection('pages').update( { page: (parseInt(page) + 1).toString(), sort: sort }, {page: (parseInt(page) + 1).toString(), sort: sort, content: JSON.stringify(second)}, {upsert: true}, (err, result) => {
+            db.collection('pages').update( { page: (parseInt(page) + 1).toString(), sort: sort, genre: genre }, {page: (parseInt(page) + 1).toString(), sort: sort, genre: genre, content: JSON.stringify(second)}, {upsert: true}, (err, result) => {
                 if (err) {
                     console.warn(`Error: error upserting document: 'Page: ${page}, Sort: ${sort}'\n${err}`)
                 } else console.log(`Page upserted: 'Page: ${(parseInt(page) + 1).toString()}, Sort: ${sort}'`)
@@ -172,7 +173,7 @@ module.exports = function(app, db) {
                     
                     headers: {
                         "Content-Type": "application/json; charset=utf-8",
-                        origin: 'HypoTube',
+                        origin: 'HypoTube', 
                     },
                     timeout: 15000,
                     redirect: 'follow',
@@ -189,7 +190,7 @@ module.exports = function(app, db) {
 
         const dbCheck = async (check, out) => {
             !out && data(url, 0)
-            db.collection('pages').findOne({ page: (parseInt(page) + check).toString(), sort: sort }, (err, result) => {
+            db.collection('pages').findOne({ page: (parseInt(page) + check).toString(), sort: sort, genre: genre }, (err, result) => {
                 if (err) {
                     out && res.send({ error: 'error' })
                 } else if (!result){
@@ -200,7 +201,6 @@ module.exports = function(app, db) {
                 }
             })
         }
-
         dbCheck(0, 1);
     })
 }

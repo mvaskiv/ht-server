@@ -58,21 +58,18 @@ let passport         = require('passport')
                         if (err) {
                             // res.send({ error: 'error' })
                         } else {
-                            let moment = new Date().getTime();
                             console.log('Registered with 42 as: ' + id);
-                            let JWT = shajs('sha256').update(moment.toString()).digest('hex') + '.' + shajs('sha256', 'hypertube').update(id).digest('hex')
-                            // res.send({status: 'login', auth: JWT, uuid: id})
+                            auth.uuid = id
+                            return cb(null, auth)
                         }
                     })  
                 } else {
-                    let moment = new Date().getTime();
                     console.log('Logged in with 42 as: ' + result.uuid);
-                    let JWT = shajs('sha256').update(moment.toString()).digest('hex') + '.' + shajs('sha256', 'hypertube').update(result.uuid).digest('hex')
-                    // res.send({status: 'login', auth: JWT, uuid: result.uuid})
+                    auth.uuid = result.uuid
+                    return cb(null, auth)
                 }
             })
         })
-        return cb(null, auth)
     }
 ));
 
