@@ -1,18 +1,3 @@
-let Cron             = require('cron').CronJob
-let cleanUp = new Cron('00 00 12 * * 0-6', () => {
-    let now = new Date().getTime()
-    fs.readdir('./movies', (err, f) => {
-        f.forEach((file, i) => {
-            fs.stat('./movies/' + file, (err, stat) => {
-                if (err) console.error(err)
-                let expiry = new Date(stat.ctime).getTime() + 262974400000
-                if (now > expiry) fs.unlink('./movies/' + file)
-            })
-        })
-    })
-}, null, true, 'UTC');
-cleanUp.start()
-
 const port           = process.env.PORT || 8000;
 const ft_uid         = 'd9e37033b880ac3cd0aa360fff1d906ed3f363d681a3acfd4c7c303a369ffbb1'
 const ft_sec         = '4367d6db88b636d01372868e543051fc4d2072510fe74f3319406b8eb2669310'
@@ -30,6 +15,21 @@ let shajs            = require('sha.js')
 let path             = require('path')
 const https          = require('https')
 let fs               = require('fs')
+
+let Cron             = require('cron').CronJob
+let cleanUp = new Cron('00 00 12 * * 0-6', () => {
+    let now = new Date().getTime()
+    fs.readdir('./movies', (err, f) => {
+        f.forEach((file, i) => {
+            fs.stat('./movies/' + file, (err, stat) => {
+                if (err) console.error(err)
+                let expiry = new Date(stat.ctime).getTime() + 262974400000
+                if (now > expiry) fs.unlink('./movies/' + file)
+            })
+        })
+    })
+}, null, true, 'UTC');
+cleanUp.start()
 
 let ft_oauth         = require('passport-42').Strategy;
 let passport         = require('passport')
