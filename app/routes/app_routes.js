@@ -6,74 +6,40 @@ let fs               = require('fs')
 let path             = require('path');
 const __root         = path.dirname(require.main.filename);
 
-async function _checkImages(movies) {
-    await movies.forEach(m => {
-        fs.access(__root + '/posters/' + m.slug + '.jpg', fs.F_OK, (err) => {
-            console.log('fs access check --- fs.F_OK --- ' + '/posters/' + m.slug + '.jpg')
-            if (err) _savePoster(m.medium_cover_image, m.slug, 'poster')
-            else return 1
-        })
-        fs.access(__root + '/covers/' + m.slug + '.jpg', fs.F_OK, (err) => {
-            if (err) _savePoster(m.background_image, m.slug, 'cover')
-            else return 1
-        })
-    })
-    return 0
-}
+// async function _checkImages(movies) {
+//     await movies.forEach(m => {
+//         fs.access(__root + '/posters/' + m.slug + '.jpg', fs.F_OK, (err) => {
+//             console.log('fs access check --- fs.F_OK --- ' + '/posters/' + m.slug + '.jpg')
+//             if (err) _savePoster(m.medium_cover_image, m.slug, 'poster')
+//             else return 1
+//         })
+//         fs.access(__root + '/covers/' + m.slug + '.jpg', fs.F_OK, (err) => {
+//             if (err) _savePoster(m.background_image, m.slug, 'cover')
+//             else return 1
+//         })
+//     })
+//     return 0
+// }
 
-function _savePoster(url, name, type) {
-    const folder    = type === 'poster' ? '/posters/' : '/covers/'
-    let localPath   = __root + folder + name + '.jpg';
-    let file        = fs.createWriteStream(localPath);
+// function _savePoster(url, name, type) {
+//     const folder    = type === 'poster' ? '/posters/' : '/covers/'
+//     let localPath   = __root + folder + name + '.jpg';
+//     let file        = fs.createWriteStream(localPath);
 
-    https.get({
-        method: 'GET',
-        host: 'cors-anywhere.herokuapp.com',
-        path: '/' + url,
-        headers: {
-            origin: 'HypoTube',
-        },
-    }, async r => {
-        r.pipe(file);
-    });
-}
+//     https.get({
+//         method: 'GET',
+//         host: 'cors-anywhere.herokuapp.com',
+//         path: '/' + url,
+//         headers: {
+//             origin: 'HypoTube',
+//         },
+//     }, async r => {
+//         r.pipe(file);
+//     });
+// }
 
 module.exports = function(app, db) {
-    // app.get('/movies/:sort/:page', (req, res) => {
-    //     const page  = req.params.page
-    //     const sort  = req.params.sort
-    //     const url   = 'https://cors-anywhere.herokuapp.com/https://yts.am/api/v2/list_movies.json?limit=25&sort_by='+sort+'&page='+page;
-        
-    //     const data = async url => {
-    //         try {
-    //             const response = await fetch(url, {
-    //                 method: 'GET',
-    //                 Accept: 'application/json',
-                    
-    //                 headers: {
-    //                     "Content-Type": "application/json; charset=utf-8",
-    //                     origin: 'HypoTube',
-    //                 },
-    //                 timeout: 15000,
-    //                 redirect: 'follow',
-    //             })
-    //             const json = await response.json()
-    //             let movies = json.data.movies;
-    //             await _checkImages(movies).then((result) => {
-    //                 if (result !== 1) res.send(movies)
-    //                 else {
-    //                     console.log('Setting Timeout --- 3000ms')
-    //                     setTimeout(() => res.send(movies), 3000)
-    //                 }
-    //             })
-    //         } catch (error) {
-    //             console.error(error)
-    //         }
-    //     }
-    //     data(url);
-    // })
-
-    app.get('/stream/:link/:name', async (req, res) => {
+    app.get('/stream/:link/:name/:code', async (req, res) => {
         const link      = req.params.link
         const name      = req.params.name
         let return_val  = null
