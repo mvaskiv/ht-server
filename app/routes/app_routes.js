@@ -6,6 +6,69 @@ let fs               = require('fs')
 let path             = require('path');
 const __root         = path.dirname(require.main.filename);
 
+let OS               = require('opensubtitles-api');
+
+const OpenSubtitles  = new OS({
+  useragent:'test v0.1',
+  username: '',
+  password: '',
+});
+OpenSubtitles.login()
+  .then(res => console.log(res.token))
+  .catch(err => console.error('OS Error: ' + err))
+
+
+function _subtitles(code, res) {
+    let lang        = 'en'
+
+    OpenSubtitles.search({
+        sublanguageid: 'en',
+        extensions: ['srt', 'vtt'],
+        limit: '3',
+        imdbid: code,
+        gzip: true
+      }).then(subtitles => {
+        console.log(subtitles['en'][0])
+        require('request')({
+            url: subtitles['en'][0].url,
+            encoding: null,
+        }, (err, resp, data) => {
+            if (err) throw err
+            require('zlib').unzip(data, async (err, buff) => {
+                if (err) throw err
+
+                let lp = __root + '/subs/' + code + '.' + subtitles['en'][0].format;
+                // let file = fs.createWriteStream(lp)
+
+                const Readable = require('stream').Readable;
+                const s = new Readable();
+                s._read = () => {}
+                s.push(buff.toString(subtitles['en'][0].encoding));
+                await s.pipe(fs.createWriteStream(lp))
+
+
+                // fs.access(lp, fs.F_OK, (err) => {
+                //     if (!err) res.send({sub: '/subs/' + code + '.' + subtitles['en'][0].format})
+                //     else {
+                //         const Readable = require('stream').Readable;
+                //         const s = new Readable();
+                //         s._read = () => {}
+                //         s.push(buff.toString(subtitles['en'][0].encoding));
+                //         s.pipe(fs.createWriteStream(lp))
+                //         res.send({sub: '/subs/' + code + '.' + subtitles['en'][0].format})
+                //     }
+                // })
+                
+
+                res.send({sub: '/subs/' + code + '.' + subtitles['en'][0].format})
+
+
+                // const subs = await buff.toString(subtitles['en'][0].encoding)
+                // res.send({subs: buff.toString(subtitles['en'][0].encoding)})
+            })
+        })        
+    }).catch(console.error)
+}
 // async function _checkImages(movies) {
 //     await movies.forEach(m => {
 //         fs.access(__root + '/posters/' + m.slug + '.jpg', fs.F_OK, (err) => {
@@ -39,6 +102,11 @@ const __root         = path.dirname(require.main.filename);
 // }
 
 module.exports = function(app, db) {
+    app.get('/sub/:code', async (req, res) => {
+        let code        = req.params.code
+        await _subtitles(code, res)
+    })
+
     app.get('/stream/:link/:name/:code', async (req, res) => {
         const link      = req.params.link
         const name      = req.params.name
