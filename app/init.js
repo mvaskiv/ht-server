@@ -6,7 +6,8 @@ module.exports = function () {
     let folders = [
         __root + '/posters/',
         __root + '/movies/',
-        __root + '/covers/'
+        __root + '/covers/',
+        __root + '/subs/'
     ]
     
     folders.forEach(dir => {

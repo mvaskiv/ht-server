@@ -5,7 +5,7 @@ const https          = require('https')
 let fs               = require('fs')
 let path             = require('path');
 const __root         = path.dirname(require.main.filename);
-
+var srt2vtt          = require('srt-to-vtt')
 let OS               = require('opensubtitles-api');
 
 const OpenSubtitles  = new OS({
@@ -28,7 +28,7 @@ function _subtitles(code, res) {
         imdbid: code,
         gzip: true
       }).then(subtitles => {
-        console.log(subtitles['en'][0])
+
         require('request')({
             url: subtitles['en'][0].url,
             encoding: null,
@@ -37,14 +37,17 @@ function _subtitles(code, res) {
             require('zlib').unzip(data, async (err, buff) => {
                 if (err) throw err
 
-                let lp = __root + '/subs/' + code + '.' + subtitles['en'][0].format;
-                // let file = fs.createWriteStream(lp)
-
+                let lp = __root + '/subs/' + code + '.vtt';
+                let sub = await buff.toString(subtitles['en'][0].encoding)
+                
                 const Readable = require('stream').Readable;
                 const s = new Readable();
                 s._read = () => {}
-                s.push(buff.toString(subtitles['en'][0].encoding));
-                await s.pipe(fs.createWriteStream(lp))
+                s.push(sub);
+
+                s.pipe(srt2vtt()).pipe(fs.createWriteStream(lp))
+
+                // await s.pipe(fs.createWriteStream(lp))
 
 
                 // fs.access(lp, fs.F_OK, (err) => {
@@ -60,7 +63,7 @@ function _subtitles(code, res) {
                 // })
                 
 
-                res.send({sub: '/subs/' + code + '.' + subtitles['en'][0].format})
+                res.send({sub: '/subs/' + code + '.vtt'})
 
 
                 // const subs = await buff.toString(subtitles['en'][0].encoding)
@@ -171,7 +174,6 @@ module.exports = function(app, db) {
             let search = result.data.movies
             res.send(search)
         })
-        
     })
 
 
@@ -236,5 +238,54 @@ module.exports = function(app, db) {
             })
         }
         dbCheck(0, 1);
+    })
+
+    app.get('/comments/:id', (req, res) => {
+        let id        = parseInt(req.params.id)
+
+        db.collection('comments').find({movie: id}).toArray((err, result) => {
+            if (err) res.send({error: 'error'})
+            else if (!result) res.send({empty: true})
+            else {
+                res.send(result)
+            }
+        })
+    })
+
+    app.post('/comments/insert', (req, res) => {
+        let user       = req.body.user
+        let movie      = req.body.movie
+        let comment      = req.body.comment
+
+        db.collection('comments').update({ user: user, movie: movie, comment: comment }, { user: user, movie: movie, comment: comment }, {upsert: true}, (err, result) => {
+            if (err) res.send({error: err})
+            else if (!result) res.send({error: 'error'})
+            else res.send({status: 'added'})
+        })
+    })
+
+    app.get('/likes/:id', (req, res) => {
+        let id        = parseInt(req.params.id)
+
+        db.collection('likes').find({'movie': id}).toArray((err, result) => {
+            
+            if (err) res.send({error: 'error'})
+            else if (!result) res.send({empty: true})
+            else {
+                res.send(result)
+            }
+        })
+    })
+
+    app.post('/likes/insert', (req, res) => {
+        let user       = req.body.user
+        let movie      = req.body.movie
+        let like       = req.body.like
+
+        db.collection('likes').update({ user: user, movie: movie, like: like }, { user: user, movie: movie, like: like }, {upsert: true}, (err, result) => {
+            if (err) res.send({error: err})
+            else if (!result) res.send({error: 'error'})
+            else res.send({status: 'added'})
+        })
     })
 }

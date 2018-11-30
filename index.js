@@ -106,6 +106,7 @@ const app            = express();
       app.use(passport.initialize());
       app.use(passport.session());
       app.use((req, res, next) => {
+        res.header('Content-Type: application/javascript')
         res.header("Access-Control-Allow-Origin", "*");
         res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
         res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
@@ -116,10 +117,6 @@ const certOptions = {
     key: fs.readFileSync(path.resolve('build/cert/server.key')),
     cert: fs.readFileSync(path.resolve('build/cert/server.crt'))
 }
-
-https.createServer(certOptions, app).listen(8443)
-
-
 
 app.get('/', (req, res) => {
     // sendmail({
@@ -138,6 +135,8 @@ init()
 app.use('/posters/', express.static('posters'))
 app.use('/covers/', express.static('covers'))
 app.use('/subs/', express.static('subs'))
+
+https.createServer(certOptions, app).listen(8443)
 
 MongoClient.connect(db.url, (err, database) => {
     if (err) return console.error(err)
