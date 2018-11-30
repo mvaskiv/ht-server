@@ -137,7 +137,7 @@ app.use('/subs/', express.static('subs'))
 app.use('/', express.static('build'))
 
 
-https.createServer(certOptions, app).listen(844)
+https.createServer(certOptions, app).listen(8443)
 
 MongoClient.connect(db.url, (err, database) => {
     if (err) return console.error(err)
