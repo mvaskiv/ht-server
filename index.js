@@ -118,7 +118,7 @@ const certOptions = {
     cert: fs.readFileSync(path.resolve('build/cert/server.crt'))
 }
 
-app.get('/', (req, res) => {
+
     // sendmail({
     //     from: 'no-reply@hypotube.test',
     //     to: 'mike@vaskiv.com',
@@ -128,15 +128,16 @@ app.get('/', (req, res) => {
     //     console.log(err && err.stack);
     //     console.dir(reply);
     // });
-    res.send('Hypertube Serving')
-})
+
 
 init()
 app.use('/posters/', express.static('posters'))
 app.use('/covers/', express.static('covers'))
 app.use('/subs/', express.static('subs'))
+app.use('/', express.static('build'))
 
-https.createServer(certOptions, app).listen(8443)
+
+https.createServer(certOptions, app).listen(844)
 
 MongoClient.connect(db.url, (err, database) => {
     if (err) return console.error(err)
